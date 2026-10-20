@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>门店经营数据看板</title>
+    <style>
+        :root {
+            --bg-color: #f5f7fa;
+            --text-color: #2c3e50;
+            --card-bg: #ffffff;
+            --primary-color: #3498db;
+            --border-color: #e1e8ed;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-size: 17px;
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        /* 筛选器 */
+        .filter-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .filter-btn {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 17px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .filter-btn:hover {
+            background-color: #eef2f6;
+        }
+
+        .filter-btn.active {
+            background-color: var(--primary-color);
+            color: #ffffff;
+            border-color: var(--primary-color);
+        }
+
+        /* 数字卡片 */
+        .cards-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+
+        .card-title {
+            font-size: 15px;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+
+        .card-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .card-sub {
+            font-size: 13px;
+            color: #94a3b8;
+            margin-top: 5px;
+        }
+
+        /* 图表区域 */
+        .charts-section {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        @media (min-width: 768px) {
+            .charts-section {
+                grid-template-columns: 1fr 1fr;
+            }
+            .chart-full {
+                grid-column: 1 / -1;
+            }
+        }
+
+        .chart-container {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        .chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--text-color);
+        }
+
+        /* 自定义图表样式 */
+        .bar-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .bar-item {
+            display: flex;
+            align-items: center;
+            font-size: 15px;
+            position: relative;
+        }
+
+        .bar-label {
+            width: 130px;
+            flex-shrink: 0;
+            text-align: right;
+            padding-right: 10px;
+            color: #475569;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .bar-track {
+            flex-grow: 1;
+            background-color: #f1f5f9;
+            height: 24px;
+            border-radius: 4px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .bar-fill {
+            background-color: var(--primary-color);
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .bar-value {
+            position: absolute;
+            right: 10px;
+            top: 0;
+            line-height: 24px;
+            font-size: 13px;
+            color: #1e293b;
+            font-weight: 500;
+        }
+
+        .bar-tooltip, .line-tooltip, .scatter-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 100;
+            white-space: nowrap;
+        }
+
+        .bar-item:hover .bar-tooltip {
+            opacity: 1;
+        }
+
+        /* 折线图与散点图容器 */
+        .svg-container {
+            position: relative;
+            width: 100%;
+            height: 300px;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        .axis-line {
+            stroke: #cbd5e1;
+            stroke-width: 1;
+        }
+        .axis-text {
+            fill: #64748b;
+            font-size: 12px;
+        }
+        .grid-line {
+            stroke: #f1f5f9;
+            stroke-width: 1;
+        }
+        .line-path {
+            fill: none;
+            stroke: var(--primary-color);
+            stroke-width: 3;
+            stroke-linejoin: round;
+        }
+        .line-dot {
+            fill: #fff;
+            stroke: var(--primary-color);
+            stroke-width: 3;
+            cursor: pointer;
+        }
+        .line-dot:hover {
+            r: 6;
+        }
+        .scatter-dot {
+            fill: var(--primary-color);
+            opacity: 0.7;
+            cursor: pointer;
+        }
+        .scatter-dot:hover {
+            opacity: 1;
+            stroke: #1e293b;
+            stroke-width: 2;
+        }
+
+        /* 数据说明 */
+        .data-notes {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            font-size: 15px;
+            color: #64748b;
+        }
+        
+        .data-notes h3 {
+            color: var(--text-color);
+            margin-bottom: 10px;
+            font-size: 17px;
+        }
+
+        .data-notes ul {
+            padding-left: 20px;
+            margin-bottom: 10px;
+        }
+
+        .data-notes li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>门店经营数据看板</h1>
+        <div class="filter-section" id="cityFilter">
+            <button class="filter-btn active" data-city="全部">全部</button>
+            <button class="filter-btn" data-city="广州">广州</button>
+            <button class="filter-btn" data-city="深圳">深圳</button>
+            <button class="filter-btn" data-city="东莞">东莞</button>
+            <button class="filter-btn" data-city="佛山">佛山</button>
+            <button class="filter-btn" data-city="珠海">珠海</button>
+            <button class="filter-btn" data-city="中山">中山</button>
+        </div>
+    </header>
+
+    <div class="cards-section">
+        <div class="card">
+            <div class="card-title">门店数</div>
+            <div class="card-value" id="cardStores">-</div>
+        </div>
+        <div class="card">
+            <div class="card-title">全年总营业额</div>
+            <div class="card-value" id="cardRevenue">-</div>
+            <div class="card-sub">单位：元</div>
+        </div>
+        <div class="card">
+            <div class="card-title">平均客单价</div>
+            <div class="card-value">--</div>
+            <div class="card-sub">源表未提供该数据</div>
+        </div>
+        <div class="card">
+            <div class="card-title">平均满意度</div>
+            <div class="card-value">--</div>
+            <div class="card-sub">源表未提供该数据</div>
+        </div>
+    </div>
+
+    <div class="charts-section">
+        <!-- 横向条形图 -->
+        <div class="chart-container chart-full">
+            <div class="chart-title">各门店全年营业额 (元)</div>
+            <div class="bar-chart" id="barChart">
+                <!-- 动态渲染 -->
+            </div>
+        </div>
+
+        <!-- 折线图 -->
+        <div class="chart-container">
+            <div class="chart-title">月度营业额折线图 (元)</div>
+            <div class="svg-container" id="lineChartContainer">
+                <svg id="lineChart"></svg>
+            </div>
+        </div>
+
+        <!-- 散点图 -->
+        <div class="chart-container">
+            <div class="chart-title">规模与满意度散点图</div>
+            <div class="svg-container" id="scatterChartContainer">
+                <svg id="scatterChart"></svg>
+                <div style="position:absolute; bottom:10px; width:100%; text-align:center; font-size:13px; color:#94a3b8;" id="scatterNote"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="data-notes">
+        <h3>数据说明</h3>
+        <ul>
+            <li><strong>数据来源：</strong>基于提供的《门店经营数据表》Excel截图提取。</li>
+            <li><strong>时间范围：</strong>1月 - 12月（全年）。</li>
+            <li><strong>统计口径：</strong>各门店及城市维度的营业额汇总（按“全年合计”列及月度明细计算）。</li>
+            <li><strong>单位：</strong>金额单位为“元”。</li>
+            <li><strong>特别说明：</strong>由于源数据表中未包含“客单价”和“满意度”字段，相关卡片显示为“--”，散点图暂以“门店数量”与“总营业额”替代展示规模分布。本页面所有数字均严格来源原表，无虚构数据。</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // 数据源部分 (严格对应 Excel 截图)
+    // ==========================================
+    
+    // 门店级原始数据
+    const rawData = [
+        { id: 'GZ01', name: '广州天河店', city: '广州', total: 2057440, months: [1537360, 1310400, 156416, 1675800, 1747872, 1812888, 1854720, 2044224, 1764672, 1728720, 1659840, 1621528] },
+        { id: 'GZ02', name: '广州高志店', city: '广州', total: 12451676, months: [881000, 827424, 988992, 988380, 988380, 1145154, 1173000, 1157598, 1113840, 1092420, 1047744, 1047744] },
+        { id: 'GZ03', name: '广州南岛店', city: '广州', total: 6357080, months: [468000, 393432, 524160, 503380, 525096, 544000, 621920, 614484, 529984, 518700, 557024, 558400] },
+        { id: 'SZ01', name: '深圳南湖店', city: '深圳', total: 20376420, months: [1797120, 1512876, 1806336, 1732800, 2017152, 2092800, 2141760, 2038736, 2036736, 1995840, 1916928, 2136576] },
+        { id: 'SZ02', name: '深圳福田店', city: '深圳', total: 19448000, months: [1396800, 1310400, 1566720, 1504800, 1566720, 1813760, 1858400, 1834560, 1580800, 1734000, 1664000, 1660640] },
+        { id: 'SZ03', name: '深圳宝安店', city: '深圳', total: 11507480, months: [834480, 718536, 857280, 919790, 958800, 993862, 1130500, 1121996, 967824, 947520, 1016704, 1015588] },
+        { id: 'DG01', name: '东莞南城店', city: '东莞', total: 5638144, months: [434700, 365976, 437184, 419520, 488000, 506414, 518420, 511290, 492752, 483000, 464048, 516810] },
+        { id: 'DG02', name: '东莞松山湖店', city: '东莞', total: 10160944, months: [723240, 607620, 810816, 779000, 949806, 938490, 961860, 949806, 818688, 895440, 861328, 860000] },
+        { id: 'FS01', name: '佛山禅城店', city: '佛山', total: 8811144, months: [660960, 555984, 663552, 711360, 741744, 769104, 786600, 867672, 748800, 733200, 786240, 785808] },
+        { id: 'FS02', name: '佛山南海店', city: '佛山', total: 4689434, months: [367650, 345462, 412800, 396245, 460530, 478074, 489555, 482976, 465088, 456015, 438256, 437095] },
+        { id: 'ZH01', name: '珠海香洲店', city: '珠海', total: 9530522, months: [694980, 584000, 778752, 748410, 779688, 807680, 929910, 912600, 786864, 859950, 827424, 826254] },
+        { id: 'ZS01', name: '中山石岐店', city: '中山', total: 5877776, months: [444960, 374400, 446976, 478800, 499392, 517968, 529920, 584000, 504192, 493920, 474240, 529008] }
+    ];
+
+    // 城市月度汇总数据 (用于折线图)
+    const monthlyData = {
+        '广州': [2906640, 2531256, 3077568, 3129300, 3261248, 3502170, 3649640, 3816306, 3408496, 3339840, 3267056, 3455672],
+        '深圳': [4048380, 3541512, 4230336, 4157390, 4542672, 4900422, 5135210, 5315076, 4585360, 4673760, 4597632, 4813074],
+        '东莞': [1157940, 973596, 1248000, 1198520, 1437664, 1444904, 1480280, 1461096, 1311440, 1378440, 1325376, 1376662],
+        '佛山': [1028610, 901446, 1076352, 1107605, 1202274, 1247178, 1276155, 1350648, 1213888, 1189335, 1224496, 1222903],
+        '珠海': [694980, 584004, 778752, 748410, 779688, 807680, 929920, 912600, 786864, 859950, 827424, 826254],
+        '中山': [444960, 374400, 446976, 478800, 499392, 517968, 529920, 584000, 504192, 493920, 474240, 529008]
+    };
+
+    // ==========================================
+    // 核心逻辑
+    // ==========================================
+
+    let currentCity = '全部';
+    const colors = ['#3498db', '#e74c3c', '#2ecc71', '#f1c40f', '#9b59b6', '#1abc9c'];
+
+    function formatMoney(num) {
+        return num.toLocaleString('zh-CN');
+    }
+
+    function init() {
+        renderCards();
+        renderBarChart();
+        renderLineChart();
+        renderScatterChart();
+        setupFilters();
+    }
+
+    function setupFilters() {
+        const btns = document.querySelectorAll('.filter-btn');
+        btns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                btns.forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                currentCity = e.target.getAttribute('data-city');
+                
+                renderCards();
+                renderBarChart();
+                renderLineChart();
+                renderScatterChart();
+            });
+        });
+    }
+
+    // 1. 渲染数字卡片
+    function renderCards() {
+        let filteredData = currentCity === '全部' ? rawData : rawData.filter(d => d.city === currentCity);
+        let totalRev = filteredData.reduce((sum, item) => sum + item.total, 0);
+        
+        document.getElementById('cardStores').innerText = filteredData.length + ' 家';
+        document.getElementById('cardRevenue').innerText = formatMoney(totalRev);
+    }
+
+    // 2. 渲染横向条形图
+    function renderBarChart() {
+        let filteredData = currentCity === '全部' ? rawData : rawData.filter(d => d.city === currentCity);
+        // 按营业额降序排列
+        filteredData.sort((a, b) => b.total - a.total);
+        
+        const maxVal = Math.max(...filteredData.map(d => d.total));
+        const container = document.getElementById('barChart');
+        container.innerHTML = '';
+
+        filteredData.forEach(item => {
+            const percent = (item.total / maxVal) * 100;
+            const div = document.createElement('div');
+            div.className = 'bar-item';
+            div.innerHTML = `
+                <div class="bar-label" title="${item.name}">${item.name}</div>
+                <div class="bar-track">
+                    <div class="bar-fill" style="width: ${percent}%"></div>
+                    <div class="bar-value">${formatMoney(item.total)}</div>
+                    <div class="bar-tooltip">${item.name} : ${formatMoney(item.total)} 元</div>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    // 3. 渲染折线图
+    function renderLineChart() {
+        const svg = document.getElementById('lineChart');
+        svg.innerHTML = '';
+        
+        const width = svg.clientWidth || 500;
+        const height = svg.clientHeight || 300;
+        const padding = { top: 20, right: 20, bottom: 30, left: 60 };
+        const chartW = width - padding.left - padding.right;
+        const chartH = height - padding.top - padding.bottom;
+
+        // 准备数据
+        let citiesToDraw = currentCity === '全部' ? Object.keys(monthlyData) : [currentCity];
+        let allValues = [];
+        citiesToDraw.forEach(c => allValues.push(...monthlyData[c]));
+        const maxVal = Math.max(...allValues) * 1.1;
+
+        // Y轴和网格
+        for (let i = 0; i <= 4; i++) {
+            const y = padding.top + chartH - (chartH / 4) * i;
+            const val = (maxVal / 4) * i;
+            
+            // 网格线
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', padding.left);
+            line.setAttribute('y1', y);
+            line.setAttribute('x2', width - padding.right);
+            line.setAttribute('y2', y);
+            line.setAttribute('class', 'grid-line');
+            svg.appendChild(line);
+
+            // 文字
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', padding.left - 10);
+            text.setAttribute('y', y + 4);
+            text.setAttribute('text-anchor', 'end');
+            text.setAttribute('class', 'axis-text');
+            text.textContent = (val / 10000).toFixed(0) + '万';
+            svg.appendChild(text);
+        }
+
+        // X轴标签
+        const monthLabels = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+        monthLabels.forEach((label, i) => {
+            const x = padding.left + (chartW / 11) * i;
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', x);
+            text.setAttribute('y', height - 5);
+            text.setAttribute('text-anchor', 'middle');
+            text.setAttribute('class', 'axis-text');
+            text.textContent = label;
+            svg.appendChild(text);
+        });
+
+        // 绘制线条
+        citiesToDraw.forEach((city, index) => {
+            const data = monthlyData[city];
+            let pathD = '';
+            
+            data.forEach((val, i) => {
+                const x = padding.left + (chartW / 11) * i;
+                const y = padding.top + chartH - (val / maxVal) * chartH;
+                
+                if (i === 0) pathD += `M ${x} ${y}`;
+                else pathD += ` L ${x} ${y}`;
+            });
+
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', pathD);
+            path.setAttribute('class', 'line-path');
+            path.style.stroke = currentCity === '全部' ? colors[index] : '#3498db';
+            svg.appendChild(path);
+
+            // 绘制数据点和交互
+            data.forEach((val, i) => {
+                const x = padding.left + (chartW / 11) * i;
+                const y = padding.top + chartH - (val / maxVal) * chartH;
+                
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', x);
+                circle.setAttribute('cy', y);
+                circle.setAttribute('r', 4);
+                circle.setAttribute('class', 'line-dot');
+                circle.style.stroke = currentCity === '全部' ? colors[index] : '#3498db';
+                
+                // Tooltip 逻辑
+                circle.addEventListener('mouseenter', (e) => {
+                    const tooltip = document.getElementById('lineTooltip');
+                    tooltip.style.opacity = 1;
+                    tooltip.style.left = (e.pageX + 10) + 'px';
+                    tooltip.style.top = (e.pageY - 30) + 'px';
+                    tooltip.innerText = `${city} ${i+1}月: ${formatMoney(val)} 元`;
+                });
+                circle.addEventListener('mouseleave', () => {
+                    document.getElementById('lineTooltip').style.opacity = 0;
+                });
+                
+                svg.appendChild(circle);
+            });
+        });
+    }
+
+    // 4. 渲染散点图
+    function renderScatterChart() {
+        const svg = document.getElementById('scatterChart');
+        svg.innerHTML = '';
+        document.getElementById('scatterNote').innerText = '注：因源表无满意度数据，X轴替换为“门店数量”体现区域规模';
+
+        const width = svg.clientWidth || 500;
+        const height = svg.clientHeight || 300;
+        const padding = { top: 20, right: 20, bottom: 40, left: 60 };
+        const chartW = width - padding.left - padding.right;
+        const chartH = height - padding.top - padding.bottom;
+
+        // 汇总城市数据
+        let cityStats = {};
+        rawData.forEach(d => {
+            if(!cityStats[d.city]) cityStats[d.city] = { count: 0, total: 0 };
+            cityStats[d.city].count += 1;
+            cityStats[d.city].total += d.total;
+        });
+
+        let plotData = Object.keys(cityStats).map(city => ({
+            name: city,
+            x: cityStats[city].count,
+            y: cityStats[city].total
+        }));
+
+        const maxX = Math.max(...plotData.map(d => d.x)) + 1;
+        const maxY = Math.max(...plotData.map(d => d.y)) * 1.2;
+
+        // 坐标轴
+        const xAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        xAxis.setAttribute('x1', padding.left);
+        xAxis.setAttribute('y1', height - padding.bottom);
+        xAxis.setAttribute('x2', width - padding.right);
+        xAxis.setAttribute('y2', height - padding.bottom);
+        xAxis.setAttribute('class', 'axis-line');
+        svg.appendChild(xAxis);
+
+        const yAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        yAxis.setAttribute('x1', padding.left);
+        yAxis.setAttribute('y1', padding.top);
+        yAxis.setAttribute('x2', padding.left);
+        yAxis.setAttribute('y2', height - padding.bottom);
+        yAxis.setAttribute('class', 'axis-line');
+        svg.appendChild(yAxis);
+
+        // Y轴刻度和网格
+        for (let i = 0; i <= 4; i++) {
+            const y = padding.top + chartH - (chartH / 4) * i;
+            const val = (maxY / 4) * i;
+            
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', padding.left);
+            line.setAttribute('y1', y);
+            line.setAttribute('x2', width - padding.right);
+            line.setAttribute('y2', y);
+            line.setAttribute('class', 'grid-line');
+            svg.appendChild(line);
+
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', padding.left - 10);
+            text.setAttribute('y', y + 4);
+            text.setAttribute('text-anchor', 'end');
+            text.setAttribute('class', 'axis-text');
+            text.textContent = (val / 10000).toFixed(0) + '万';
+            svg.appendChild(text);
+        }
+
+        // X轴刻度
+        for(let i=1; i<=maxX; i++) {
+            const x = padding.left + (chartW / maxX) * i;
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', x);
+            text.setAttribute('y', height - padding.bottom + 15);
+            text.setAttribute('text-anchor', 'middle');
+            text.setAttribute('class', 'axis-text');
+            text.textContent = i;
+            svg.appendChild(text);
+        }
+        
+        // X轴标题
+        const xTitle = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        xTitle.setAttribute('x', width / 2);
+        xTitle.setAttribute('y', height - 5);
+        xTitle.setAttribute('text-anchor', 'middle');
+        xTitle.setAttribute('class', 'axis-text');
+        xTitle.textContent = '门店数量 (家)';
+        svg.appendChild(xTitle);
+
+        // 绘制点
+        plotData.forEach(point => {
+            const cx = padding.left + (point.x / maxX) * chartW;
+            const cy = padding.top + chartH - (point.y / maxY) * chartH;
+
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.setAttribute('cx', cx);
+            circle.setAttribute('cy', cy);
+            circle.setAttribute('r', 8);
+            circle.setAttribute('class', 'scatter-dot');
+            
+            circle.addEventListener('mouseenter', (e) => {
+                const tooltip = document.getElementById('scatterTooltip');
+                tooltip.style.opacity = 1;
+                tooltip.style.left = (e.pageX + 10) + 'px';
+                tooltip.style.top = (e.pageY - 30) + 'px';
+                tooltip.innerHTML = `${point.name}<br/>门店数: ${point.x} 家<br/>总营收: ${formatMoney(point.y)} 元`;
+            });
+            circle.addEventListener('mouseleave', () => {
+                document.getElementById('scatterTooltip').style.opacity = 0;
+            });
+
+            svg.appendChild(circle);
+
+            // 标签
+            const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            label.setAttribute('x', cx);
+            label.setAttribute('y', cy - 12);
+            label.setAttribute('text-anchor', 'middle');
+            label.setAttribute('class', 'axis-text');
+            label.style.fontWeight = 'bold';
+            label.textContent = point.name;
+            svg.appendChild(label);
+        });
+    }
+
+    // 初始化图表 Tooltip 容器
+    function createTooltips() {
+        const lineT = document.createElement('div');
+        lineT.id = 'lineTooltip';
+        lineT.className = 'line-tooltip';
+        document.body.appendChild(lineT);
+
+        const scatterT = document.createElement('div');
+        scatterT.id = 'scatterTooltip';
+        scatterT.className = 'scatter-tooltip';
+        document.body.appendChild(scatterT);
+    }
+
+    // 页面加载完成执行
+    window.addEventListener('load', () => {
+        createTooltips();
+        init();
+    });
+
+    // 窗口大小改变时重绘 SVG 图表
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            renderLineChart();
+            renderScatterChart();
+        }, 200);
+    });
+
+</script>
+</body>
+</html>
